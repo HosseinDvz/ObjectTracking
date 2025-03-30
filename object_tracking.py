@@ -5,8 +5,7 @@ import collections as cl
 import numpy as np
 import cv2
 
-# Setup MPS - Metal Performance Shaders for Apple Silicon hardware acceleration
-# Falls back to CPU if MPS is not available
+# Set MPS, CUDA or CPU
 if torch.backends.mps.is_available():
   device = torch.device("mps")
 elif torch.backends.cuda.is_available():
@@ -15,49 +14,56 @@ else:
   device = torch.device("cpu")
 print("Using device:", device)
 
-# Load Pretrained SSDlite object detector with MobileNetV3 backbone
-# SSDlite is a lightweight single-shot detector optimized for mobile and edge devices
-# It's pre-trained on COCO dataset which includes 'person' as class ID 1
+# Load Pretrained SSDlite object detector with MobileNetV3
+# A lightweight single shot detector optimized for mobile and edge devices
 model = ssdlite320_mobilenet_v3_large(pretrained=True)
-model.to(device).eval()  # Move model to device and set to evaluation mode
+model.to(device).eval()
+
+
+class BoundingBox:
+  def iou(self, other) -> float:
+    """
+    Calculate Intersection over Union between two bounding boxes.
+    """
+    # Find coordinates of intersection rectangle
+    xA, yA = max(self.box[0], other.box[0]), max(self.box[1], other.box[1])
+    xB, yB = min(self.box[2], other.box[2]), min(self.box[3], other.box[3])
+
+    # Calculate area of intersection
+    intersection_area = max(0, xB - xA) * max(0, yB - yA)
+
+    # Calculate areas of both bounding boxes
+    boxAArea = max(1, (self.box[2] - self.box[0])) * max(1, (self.box[3] - self.box[1]))
+    boxBArea = max(1, (other.box[2] - other.box[0])) * max(1, (other.box[3] - other.box[1]))
+
+    # Calculate IOU (add small epsilon to avoid division by zero)
+    return float(intersection_area) / (boxAArea + boxBArea - intersection_area + 1e-5)
+
+
+class Tracked(BoundingBox):
+  def __init__(self, box: list[int], score: float, label: int):
+    self.box = box
+    self.score = score
+    self.label = label
+    self.id = -1
+    self.tracked = False
 
 
 class SimpleTracker:
   """
-  Simple ByteTrack-style IOU tracker.
+  Intersection over Union tracker.
 
-  This tracker associates detections between frames using Intersection over Union (IOU).
+  Associates detections between frames using Intersection over Union.
   New detections that overlap sufficiently with existing tracks are associated with those tracks.
   Detections without matches are assigned new track IDs.
   """
 
   def __init__(self, iou_threshold: float = 0.3):
-    self.next_id = 0  # Counter for generating unique track IDs
+    self.next_id = 0  # Counter for generating new track IDs
     self.tracks = cl.deque()
     self.iou_threshold = iou_threshold  # Minimum IOU required to match detections to existing tracks
 
-  def iou(self, boxA, boxB):
-    """
-    Calculate Intersection over Union between two bounding boxes.
-
-    IOU = area of intersection / area of union
-    Higher IOU means boxes overlap more.
-    """
-    # Find coordinates of intersection rectangle
-    xA, yA = max(boxA[0], boxB[0]), max(boxA[1], boxB[1])
-    xB, yB = min(boxA[2], boxB[2]), min(boxA[3], boxB[3])
-
-    # Calculate area of intersection
-    interArea = max(0, xB - xA) * max(0, yB - yA)
-
-    # Calculate areas of both bounding boxes
-    boxAArea = max(1, (boxA[2] - boxA[0])) * max(1, (boxA[3] - boxA[1]))
-    boxBArea = max(1, (boxB[2] - boxB[0])) * max(1, (boxB[3] - boxB[1]))
-
-    # Calculate IOU (add small epsilon to avoid division by zero)
-    return interArea / float(boxAArea + boxBArea - interArea + 1e-5)
-
-  def update(self, detections):
+  def update(self, detections: list[Tracked]):
     """
     Update tracks with new detections from current frame.
 
@@ -70,17 +76,23 @@ class SimpleTracker:
     updated_tracks = cl.deque()
     for det in detections:
       matched = False
-      for (track_box, track_id) in self.tracks:
-        if self.iou(det, track_box) > self.iou_threshold:
-          updated_tracks.append((det, track_id))  # Update track with new detection
+      for track_box in self.tracks:
+        if track_box.tracked:
+          continue
+        if det.iou(track_box) > self.iou_threshold:
+          det.id = track_box.id
+          track_box.tracked = True
+          updated_tracks.append(det)  # Update track with new detection
           matched = True
           break
       if not matched:
-        updated_tracks.append((det, self.next_id))  # Create new track
+        det.id = self.next_id
         self.next_id += 1
-    self.tracks = updated_tracks
+        updated_tracks.append(det)  # Create new track
+    current_tracks = updated_tracks
+    self.tracks = current_tracks
     # Convert box coordinates to integers for drawing
-    return [(int(b[0]), int(b[1]), int(b[2]), int(b[3]), id) for b, id in self.tracks]
+    return current_tracks
 
 
 # Initialize webcam capture
@@ -139,7 +151,7 @@ while cv2.waitKey(1) & 0xFF != ord('q'):
   ]
 
   # Update tracks with new detections
-  tracked = tracker.update(scaled_boxes)
+  tracked = tracker.update([Tracked(box, score, label) for box, score, label in zip(scaled_boxes, scores, labels)])
 
   # Visualization and camera guidance logic
   # The code finds the largest person (by bounding box area) and calculates
@@ -154,21 +166,21 @@ while cv2.waitKey(1) & 0xFF != ord('q'):
   p2_max = (0, 0)
   id = -1
   # For every bounding box being tracked
-  for x1, y1, x2, y2, track_id in tracked:
-    p1 = (x1, y1)
-    p2 = (x2, y2)
+  for person in tracked:
+    p1 = (person.box[0], person.box[1])
+    p2 = (person.box[2], person.box[3])
     # Calculate the area of the bounding box
-    area = (x2 - x1) * (y2 - y1)
+    area = (person.box[2] - person.box[0]) * (person.box[3] - person.box[1])
     # Find the bounding box with the largest area
     if area > max_area:
       max_area = area
-      id = track_id
+      id = person.id
       p1_max = p1
       p2_max = p2
 
     # Draw a regular bounding box as white
     cv2.rectangle(original_frame, p1, p2, (255, 255, 255), 2)
-    cv2.putText(original_frame, f'Person ID: {track_id} Area {area}', (x1, y1 - 10),
+    cv2.putText(original_frame, f'Person ID: {person.id} Area {area}', (person.box[0], person.box[1] - 10),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
 
   # If there is a largest bounding box, draw it and calculate camera movement
