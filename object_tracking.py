@@ -135,7 +135,7 @@ while cv2.waitKey(1) & 0xFF != ord('q'):
   labels = output['labels'].cpu().numpy()
 
   # Filter detections: keep only persons (class 1) with confidence above threshold
-  threshold = 0.5
+  threshold = 0.4
   person_boxes = [
       [box[0], box[1], box[2], box[3]]
       for box, score, label in zip(boxes, scores, labels)
