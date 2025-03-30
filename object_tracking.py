@@ -21,6 +21,9 @@ model.to(device).eval()
 
 
 class BoundingBox:
+  def __init__(self, box: list[int]):
+    self.box = box
+
   def iou(self, other) -> float:
     """
     Calculate Intersection over Union between two bounding boxes.
@@ -179,6 +182,7 @@ while cv2.waitKey(1) & 0xFF != ord('q'):
       p2_max = p2
 
     # Draw a regular bounding box as white
+    print(p1, p2)
     cv2.rectangle(original_frame, p1, p2, (255, 255, 255), 2)
     cv2.putText(original_frame, f'Person ID: {person.id} Area {area}', (person.box[0], person.box[1] - 10),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
@@ -187,6 +191,7 @@ while cv2.waitKey(1) & 0xFF != ord('q'):
   if id >= 0:
     center_x = p1[0] + (p2[0] - p1[0]) // 2
     center_y = p1[1] + (p2[1] - p1[1]) // 2
+    print(p1_max, p2_max)
     cv2.rectangle(original_frame, p1_max, p2_max, (0, 0, 255), 2)
     cv2.putText(original_frame, f'Person ID: {id} Area {max_area} ({p1[0]}, {p1[1]}), ({p2[0]}, {p2[1]}) Center ({center_x}, {center_y})', (0, 15),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
