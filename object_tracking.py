@@ -24,6 +24,9 @@ class BoundingBox:
   def __init__(self, box: list[int]):
     self.box = box
 
+  def __getitem__(self, i: int):
+    return self.box[i]
+
   def iou(self, other) -> float:
     """
     Calculate Intersection over Union between two bounding boxes.
@@ -170,10 +173,10 @@ while cv2.waitKey(1) & 0xFF != ord('q'):
   id = -1
   # For every bounding box being tracked
   for person in tracked:
-    p1 = (person.box[0], person.box[1])
-    p2 = (person.box[2], person.box[3])
+    p1 = (person[0], person[1])
+    p2 = (person[2], person[3])
     # Calculate the area of the bounding box
-    area = (person.box[2] - person.box[0]) * (person.box[3] - person.box[1])
+    area = (person[2] - person[0]) * (person[3] - person[1])
     # Find the bounding box with the largest area
     if area > max_area:
       max_area = area
@@ -184,7 +187,7 @@ while cv2.waitKey(1) & 0xFF != ord('q'):
     # Draw a regular bounding box as white
     print(p1, p2)
     cv2.rectangle(original_frame, p1, p2, (255, 255, 255), 2)
-    cv2.putText(original_frame, f'Person ID: {person.id} Area {area}', (person.box[0], person.box[1] - 10),
+    cv2.putText(original_frame, f'Person ID: {person.id} Area {area}', (person[0], person[1] - 10),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
 
   # If there is a largest bounding box, draw it and calculate camera movement
