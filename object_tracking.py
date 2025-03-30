@@ -185,6 +185,7 @@ while cv2.waitKey(1) & 0xFF != ord('q'):
       p2_max = p2
 
     # Draw a regular bounding box as white
+    print("1")
     print(p1, p2)
     cv2.rectangle(original_frame, p1, p2, (255, 255, 255), 2)
     cv2.putText(original_frame, f'Person ID: {person.id} Area {area}', (person[0], person[1] - 10),
@@ -194,6 +195,7 @@ while cv2.waitKey(1) & 0xFF != ord('q'):
   if id >= 0:
     center_x = p1[0] + (p2[0] - p1[0]) // 2
     center_y = p1[1] + (p2[1] - p1[1]) // 2
+    print("2")
     print(p1_max, p2_max)
     cv2.rectangle(original_frame, p1_max, p2_max, (0, 0, 255), 2)
     cv2.putText(original_frame, f'Person ID: {id} Area {max_area} ({p1[0]}, {p1[1]}), ({p2[0]}, {p2[1]}) Center ({center_x}, {center_y})', (0, 15),
