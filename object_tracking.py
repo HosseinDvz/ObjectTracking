@@ -219,7 +219,7 @@ while cv2.waitKey(1) & 0xFF != ord('q'):
         move_y_str = "up"
         move_y = -move_y
       cv2.putText(original_frame, f'({screen_center_y}) Camera should move {move_y} {move_y_str}.', (0, original_image_y - 15),
-                  cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 200, 0), 2)
+                  cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 200), 2)
   cv2.imshow("Tracking", original_frame)
 
 cap.release()
