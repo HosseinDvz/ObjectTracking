@@ -14,11 +14,6 @@ else:
   device = torch.device("cpu")
 print("Using device:", device)
 
-# Load Pretrained SSDlite object detector with MobileNetV3
-# A lightweight single shot detector optimized for mobile and edge devices
-model = ssdlite320_mobilenet_v3_large(pretrained=True)
-model.to(device).eval()
-
 
 class BoundingBox:
   def __init__(self, box: list[int]):
@@ -32,15 +27,15 @@ class BoundingBox:
     Calculate Intersection over Union between two bounding boxes.
     """
     # Find coordinates of intersection rectangle
-    xA, yA = max(self.box[0], other.box[0]), max(self.box[1], other.box[1])
-    xB, yB = min(self.box[2], other.box[2]), min(self.box[3], other.box[3])
+    xA, yA = max(self[0], other[0]), max(self[1], other[1])
+    xB, yB = min(self[2], other[2]), min(self[3], other[3])
 
     # Calculate area of intersection
     intersection_area = max(0, xB - xA) * max(0, yB - yA)
 
     # Calculate areas of both bounding boxes
-    boxAArea = max(1, (self.box[2] - self.box[0])) * max(1, (self.box[3] - self.box[1]))
-    boxBArea = max(1, (other.box[2] - other.box[0])) * max(1, (other.box[3] - other.box[1]))
+    boxAArea = max(1, (self[2] - self[0])) * max(1, (self[3] - self[1]))
+    boxBArea = max(1, (other[2] - other[0])) * max(1, (other[3] - other[1]))
 
     # Calculate IOU (add small epsilon to avoid division by zero)
     return float(intersection_area) / (boxAArea + boxBArea - intersection_area + 1e-5)
@@ -112,6 +107,11 @@ print("Press Q to quit.")
 width = 320
 height = 320
 
+# Load Pretrained SSDlite object detector with MobileNetV3
+# A lightweight single shot detector optimized for mobile and edge devices
+model = ssdlite320_mobilenet_v3_large(pretrained=True)
+model.to(device).eval()
+
 # Main Loop: Human Detection + Tracking
 while cv2.waitKey(1) & 0xFF != ord('q'):
   ret, frame = cap.read()
@@ -139,7 +139,7 @@ while cv2.waitKey(1) & 0xFF != ord('q'):
   person_boxes = [
       [box[0], box[1], box[2], box[3]]
       for box, score, label in zip(boxes, scores, labels)
-      if score > threshold and label == 1
+      if label == 1 and score > threshold
   ]
 
   # Calculate scaling factors to map detection boxes back to original frame size
@@ -189,7 +189,7 @@ while cv2.waitKey(1) & 0xFF != ord('q'):
     print(p1, p2)
     cv2.rectangle(original_frame, p1, p2, (255, 255, 255), 2)
     cv2.putText(original_frame, f'Person ID: {person.id} Area {area}', (person[0], person[1] - 10),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
   # If there is a largest bounding box, draw it and calculate camera movement
   if id >= 0:
@@ -197,9 +197,9 @@ while cv2.waitKey(1) & 0xFF != ord('q'):
     center_y = p1[1] + (p2[1] - p1[1]) // 2
     print("2")
     print(p1_max, p2_max)
-    cv2.rectangle(original_frame, p1_max, p2_max, (0, 0, 255), 2)
+    cv2.rectangle(original_frame, p1_max, p2_max, (255, 0, 0), 2)
     cv2.putText(original_frame, f'Person ID: {id} Area {max_area} ({p1[0]}, {p1[1]}), ({p2[0]}, {p2[1]}) Center ({center_x}, {center_y})', (0, 15),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
     move_x = center_x - screen_center_x
     # If the horizontal center is not in the center of the screen, calculate the movement
     if move_x != 0:
