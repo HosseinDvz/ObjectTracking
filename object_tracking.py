@@ -175,9 +175,9 @@ while cv2.waitKey(1) & 0xFF != ord('q'):
   if id >= 0:
     center_x = p1[0] + (p2[0] - p1[0]) // 2
     center_y = p1[1] + (p2[1] - p1[1]) // 2
-    cv2.rectangle(original_frame, p1_max, p2_max, (0, 0, 255), 2)
+    cv2.rectangle(original_frame, p1_max, p2_max, (0, 255, 0), 2)
     cv2.putText(original_frame, f'Person ID: {id} Area {max_area} ({p1[0]}, {p1[1]}), ({p2[0]}, {p2[1]}) Center ({center_x}, {center_y})', (0, 15),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 0, 0), 2)
     move_x = center_x - screen_center_x
     # If the horizontal center is not in the center of the screen, calculate the movement
     if move_x != 0:
