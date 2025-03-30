@@ -25,7 +25,7 @@ class BoundingBox:
     self.box = box
 
   def __getitem__(self, i: int):
-    return self.box[i]
+    return int(self.box[i])
 
   def iou(self, other) -> float:
     """
